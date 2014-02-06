@@ -84,9 +84,15 @@ func (n Ncclient) Write(line string) io.Reader {
 }
 
 func MakeSshClient(username string, password string, hostname string, key string, port int) (*ssh.Session, io.WriteCloser, io.Reader) {
+	if key != nil {
+		block, _ := pem.Decode([]byte(key))
+		rsakey, _ := x509.ParsePKCS1PrivateKey(block.Bytes)
+		clientKey := &keychain{rsakey}
+	}
 	config := &ssh.ClientConfig{
 		User: username,
 		Auth: []ssh.ClientAuth{
+			ssh.ClientAuthKeyring(clientKey),
 			ssh.ClientAuthPassword(clientPassword(password)),
 			publickeyAuth
 		},
