@@ -83,11 +83,12 @@ func (n Ncclient) Write(line string) io.Reader {
 	return xmlBuffer
 }
 
-func MakeSshClient(username string, password string, hostname string, port int) (*ssh.Session, io.WriteCloser, io.Reader) {
+func MakeSshClient(username string, password string, hostname string, key string, port int) (*ssh.Session, io.WriteCloser, io.Reader) {
 	config := &ssh.ClientConfig{
 		User: username,
 		Auth: []ssh.ClientAuth{
 			ssh.ClientAuthPassword(clientPassword(password)),
+			publickeyAuth
 		},
 	}
 
@@ -135,11 +136,31 @@ func (n *Ncclient) Connect() (err error) {
 	return
 }
 
-func MakeClient(username string, password string, hostname string, port int) Ncclient {
+func MakeClient(username string, password string, hostname string, key string, port int) Ncclient {
 	nc := new(Ncclient)
 	nc.username = username
 	nc.password = password
 	nc.hostname = hostname
+	nc.key = key
 	nc.port = port
 	return *nc
+}
+
+type keychain struct {
+	key *rsa.PrivateKey
+}
+ 
+func (k *keychain) Key(i int) (interface{}, error) {
+	if i != 0 {
+		return nil, nil
+	}
+	return &k.key.PublicKey, nil
+}
+ 
+func (k *keychain) Sign(i int, rand io.Reader, data []byte) (sig []byte, err error) {
+	hashFunc := crypto.SHA1
+	h := hashFunc.New()
+	h.Write(data)
+	digest := h.Sum(nil)
+	return rsa.SignPKCS1v15(rand, k.key, hashFunc, digest)
 }
