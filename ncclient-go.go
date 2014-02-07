@@ -45,6 +45,7 @@ type Ncclient struct {
 	username string
 	password string
 	hostname string
+	key      string
 	port     int
 
 	session       *ssh.Session
@@ -143,7 +144,7 @@ func (n *Ncclient) Connect() (err error) {
 			err = errors.New(r.(string))
 		}
 	}()
-	sshSession, sessionStdin, sessionStdout := MakeSshClient(n.username, n.password, n.hostname, n.port)
+	sshSession, sessionStdin, sessionStdout := MakeSshClient(n.username, n.password, n.hostname, n.key, n.port)
 
 	if err := sshSession.RequestSubsystem("netconf"); err != nil {
 		// TODO: the command `xml-mode netconf need-trailer` can be executed
@@ -174,7 +175,7 @@ func (k *keychain) Key(i int) (ssh.PublicKey, error) {
 	if i != 0 {
 		return nil, nil
 	}
-	return &k.key.PublicKey, nil
+	return ssh.NewPublicKey(&k.key.PublicKey)
 }
 
 func (k *keychain) Sign(i int, rand io.Reader, data []byte) (sig []byte, err error) {
